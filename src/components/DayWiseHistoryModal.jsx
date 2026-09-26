@@ -185,23 +185,21 @@ export default function DayWiseHistoryModal({ entries = [], onClose, onDeleteEnt
                             <div className="space-y-3">
                               <div>
                                 <label className="block text-[10px] font-semibold uppercase text-[#a0a0a0] mb-1">
-                                  Topic Prompt
+                                  Speaking Topic
                                 </label>
-                                <select
+                                <input
+                                  type="text"
+                                  required
                                   value={editFormData.topic || ''}
                                   onChange={(e) => setEditFormData({ ...editFormData, topic: e.target.value })}
                                   className="w-full bg-[#242424] border border-[#3a3a3a] rounded-xl px-3 py-1.5 text-xs text-[#f0f0f0] focus:outline-none focus:border-[#525252]"
-                                >
-                                  {SPEAKING_TOPICS.map((t, idx) => (
-                                    <option key={idx} value={t}>{t}</option>
-                                  ))}
-                                </select>
+                                />
                               </div>
 
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
                                   <label className="block text-[10px] font-semibold uppercase text-[#a0a0a0] mb-1">
-                                    How long? (minutes)
+                                    Duration (minutes)
                                   </label>
                                   <input
                                     type="number"
@@ -215,7 +213,7 @@ export default function DayWiseHistoryModal({ entries = [], onClose, onDeleteEnt
 
                                 <div>
                                   <label className="block text-[10px] font-semibold uppercase text-[#a0a0a0] mb-1">
-                                    Any notes?
+                                    Notes
                                   </label>
                                   <input
                                     type="text"
@@ -233,17 +231,15 @@ export default function DayWiseHistoryModal({ entries = [], onClose, onDeleteEnt
                             <div className="space-y-3">
                               <div>
                                 <label className="block text-[10px] font-semibold uppercase text-[#a0a0a0] mb-1">
-                                  Topic Prompt
+                                  Writing Topic
                                 </label>
-                                <select
+                                <input
+                                  type="text"
+                                  required
                                   value={editFormData.topic || ''}
                                   onChange={(e) => setEditFormData({ ...editFormData, topic: e.target.value })}
                                   className="w-full bg-[#242424] border border-[#3a3a3a] rounded-xl px-3 py-1.5 text-xs text-[#f0f0f0] focus:outline-none focus:border-[#525252]"
-                                >
-                                  {WRITING_TOPICS.map((t, idx) => (
-                                    <option key={idx} value={t}>{t}</option>
-                                  ))}
-                                </select>
+                                />
                               </div>
 
                               <div className="grid grid-cols-2 gap-3">

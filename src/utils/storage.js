@@ -7,7 +7,7 @@ const STORAGE_KEYS = {
   VOCAB: 'daily_practice_vocab',
 };
 
-// 10 Speaking Prompts provided by the user
+// 10 Speaking Prompts + Pen in Mouth Challenge
 export const SPEAKING_TOPICS = [
   "1. Introduce yourself and talk about your hobbies",
   "2. Describe your daily routine",
@@ -18,7 +18,8 @@ export const SPEAKING_TOPICS = [
   "7. Practice role-plays (shopping, ordering food, interviews)",
   "8. Give your opinion on a simple topic",
   "9. Practice speaking in front of a mirror or by recording yourself",
-  "10. Have short conversations with classmates in English"
+  "10. Have short conversations with classmates in English",
+  "11. Pen-in-Mouth 10-Min Speaking Challenge (Clear Pronunciation)"
 ];
 
 // 10 Writing Prompts provided by the user
@@ -34,6 +35,97 @@ export const WRITING_TOPICS = [
   "9. Write about your goals and future plans",
   "10. Write your opinion on a simple topic"
 ];
+
+// Helper to format local date string (YYYY-MM-DD) avoiding UTC timezone shifts
+export function getLocalDateStr(dateObj = new Date()) {
+  const d = typeof dateObj === 'string' || typeof dateObj === 'number' ? new Date(dateObj) : dateObj;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Helper to check if a category is already locked for today (1 entry max per category per day)
+export function isCategoryLockedToday(entries, category) {
+  const todayStr = getLocalDateStr();
+  return (entries || []).some(e => e.category === category && e.date === todayStr);
+}
+
+// Helper to compute heatmap data starting from the user's first recorded entry date
+export function calculateHeatmapDays(entries = []) {
+  const today = new Date();
+
+  // Create count dictionary by date (YYYY-MM-DD)
+  const entryCountByDate = {};
+  (entries || []).forEach(e => {
+    if (e.date) {
+      entryCountByDate[e.date] = (entryCountByDate[e.date] || 0) + 1;
+    }
+  });
+
+  // Determine earliest entry date
+  let firstEntryDate = new Date(today);
+
+  if (entries && entries.length > 0) {
+    const dates = entries
+      .map(e => {
+        if (!e.date) return null;
+        const parts = e.date.split('-');
+        if (parts.length === 3) {
+          return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).getTime();
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (dates.length > 0) {
+      firstEntryDate = new Date(Math.min(...dates));
+    }
+  }
+
+  // Start Date = Sunday of the week of firstEntryDate (Column 1 starts here!)
+  const startDate = new Date(firstEntryDate);
+  const dayOfWeek = startDate.getDay();
+  startDate.setDate(startDate.getDate() - dayOfWeek);
+
+  // End Date = Saturday of current week (grows automatically as weeks pass!)
+  const endDate = new Date(today);
+  const endDayOfWeek = endDate.getDay();
+  endDate.setDate(endDate.getDate() + (6 - endDayOfWeek));
+
+  const heatmapDays = [];
+  const current = new Date(startDate);
+
+  while (current <= endDate) {
+    const dateStr = getLocalDateStr(current);
+    const count = entryCountByDate[dateStr] || 0;
+    heatmapDays.push({
+      dateStr,
+      dateLabel: current.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      dayName: current.toLocaleDateString('en-US', { weekday: 'short' }),
+      count
+    });
+    current.setDate(current.getDate() + 1);
+  }
+
+  const heatmapColumns = [];
+  for (let i = 0; i < heatmapDays.length; i += 7) {
+    heatmapColumns.push(heatmapDays.slice(i, i + 7));
+  }
+
+  const activeDaysCount = Object.keys(entryCountByDate).length;
+  const firstEntryLabel = firstEntryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  return { 
+    heatmapDays, 
+    heatmapColumns, 
+    activeDaysCount, 
+    totalDaysCount: heatmapDays.length,
+    firstEntryLabel,
+    startDateStr: getLocalDateStr(startDate),
+    endDateStr: getLocalDateStr(endDate)
+  };
+}
 
 export const storage = {
   getEntries: () => {
@@ -61,7 +153,7 @@ export const storage = {
       const entries = storage.getEntries();
       const newEntry = {
         id: `entry-${Date.now()}`,
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateStr(),
         createdAt: new Date().toISOString(),
         ...entry
       };
@@ -131,7 +223,7 @@ export const storage = {
       const list = storage.getVocabList();
       const newItem = {
         id: `vocab-${Date.now()}`,
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateStr(),
         learned: false,
         ...item
       };
@@ -252,10 +344,10 @@ export const storage = {
       if (entries.length === 0) return 0;
 
       const dateSet = new Set(entries.map(e => e.date).filter(Boolean));
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalDateStr();
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const yesterdayStr = getLocalDateStr(yesterday);
 
       if (!dateSet.has(todayStr) && !dateSet.has(yesterdayStr)) {
         return 0;
@@ -265,7 +357,7 @@ export const storage = {
       let checkDate = dateSet.has(todayStr) ? new Date() : yesterday;
 
       while (true) {
-        const checkStr = checkDate.toISOString().split('T')[0];
+        const checkStr = getLocalDateStr(checkDate);
         if (dateSet.has(checkStr)) {
           streak++;
           checkDate.setDate(checkDate.getDate() - 1);

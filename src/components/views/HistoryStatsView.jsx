@@ -9,6 +9,7 @@ import {
   Mic, 
   PenTool
 } from 'lucide-react';
+import { calculateHeatmapDays } from '../../utils/storage';
 
 export default function HistoryStatsView({ entries = [] }) {
   const [filterCategory, setFilterCategory] = useState('ALL');
@@ -35,33 +36,9 @@ export default function HistoryStatsView({ entries = [] }) {
 
   const totalLifetimeHours = (Number(consumptionHours) + Number(speakingHours) + Number(writingHours)).toFixed(1);
 
-  // ================= 2. 12-WEEK GITHUB-STYLE HEATMAP DATA =================
-  const today = new Date();
-  const heatmapDays = [];
-  for (let i = 83; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    
-    const dayEntries = entries.filter(e => e.date === dateStr);
-    const count = dayEntries.length;
-    
-    heatmapDays.push({
-      dateStr,
-      dateLabel: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
-      count,
-      isComplete: count > 0
-    });
-  }
-
-  const heatmapColumns = [];
-  for (let col = 0; col < 12; col++) {
-    heatmapColumns.push(heatmapDays.slice(col * 7, (col + 1) * 7));
-  }
-
-  const activeDaysCount = heatmapDays.filter(d => d.isComplete).length;
-  const completionPercentage = Math.round((activeDaysCount / 84) * 100);
+  // Dynamic Heatmap starting from earliest entry date
+  const { heatmapDays, heatmapColumns, activeDaysCount, totalDaysCount } = calculateHeatmapDays(entries);
+  const completionPercentage = totalDaysCount > 0 ? Math.round((activeDaysCount / totalDaysCount) * 100) : 0;
 
   // ================= 3. WRITING WORD COUNT LINE CHART DATA =================
   const writingEntries = entries
@@ -196,16 +173,16 @@ export default function HistoryStatsView({ entries = [] }) {
           <div>
             <h3 className="text-sm font-bold text-[#f0f0f0] flex items-center gap-2">
               <Calendar className="w-4 h-4 text-[#a0a0a0]" />
-              12-Week Practice Contribution Heatmap
+              Daily Practice Contribution Grid
             </h3>
             <p className="text-xs text-[#a0a0a0]">
-              Daily practice activity over the last 12 weeks (84 days).
+              Daily practice activity starting from your first entry date.
             </p>
           </div>
 
           <div className="flex items-center space-x-3 text-xs">
             <span className="text-[#a0a0a0] font-mono">
-              <strong className="text-[#4ade80] font-bold">{activeDaysCount}</strong> / 84 Active Days ({completionPercentage}%)
+              <strong className="text-[#4ade80] font-bold">{activeDaysCount}</strong> / {totalDaysCount} Active Days ({completionPercentage}%)
             </span>
             <div className="flex items-center space-x-1 text-[10px] text-[#a0a0a0] font-mono">
               <span>Less</span>
@@ -219,24 +196,38 @@ export default function HistoryStatsView({ entries = [] }) {
 
         {/* Heatmap Grid Container */}
         <div className="overflow-x-auto pb-2">
-          <div className="flex space-x-1.5 min-w-[560px]">
-            {heatmapColumns.map((colDays, colIdx) => (
-              <div key={colIdx} className="flex flex-col space-y-1.5">
-                {colDays.map((day) => {
-                  let bgClass = 'bg-[#242424] border-[#3a3a3a]';
-                  if (day.count === 1) bgClass = 'bg-[#2d5a3d] border-[#3a7852] shadow-2xs';
-                  else if (day.count >= 2) bgClass = 'bg-[#4ade80] border-[#86efac] shadow-2xs';
+          <div className="flex items-start space-x-2 min-w-[500px]">
+            {/* Day Labels Column */}
+            <div className="flex flex-col justify-between h-[126px] sm:h-[136px] text-[9px] font-mono text-[#a0a0a0] select-none pr-1">
+              <span>Sun</span>
+              <span>Mon</span>
+              <span>Tue</span>
+              <span>Wed</span>
+              <span>Thu</span>
+              <span>Fri</span>
+              <span>Sat</span>
+            </div>
 
-                  return (
-                    <div
-                      key={day.dateStr}
-                      title={`${day.dateLabel}: ${day.count} practice entry(s)`}
-                      className={`w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-[4px] border transition-transform hover:scale-125 cursor-pointer ${bgClass}`}
-                    />
-                  );
-                })}
-              </div>
-            ))}
+            {/* Heatmap Columns */}
+            <div className="flex space-x-1.5 flex-1">
+              {heatmapColumns.map((colDays, colIdx) => (
+                <div key={colIdx} className="flex flex-col space-y-1.5">
+                  {colDays.map((day) => {
+                    let bgClass = 'bg-[#242424] border-[#3a3a3a]';
+                    if (day.count === 1) bgClass = 'bg-[#2d5a3d] border-[#3a7852] shadow-2xs';
+                    else if (day.count >= 2) bgClass = 'bg-[#4ade80] border-[#86efac] shadow-2xs';
+
+                    return (
+                      <div
+                        key={day.dateStr}
+                        title={`${day.dateLabel} (${day.dayName}): ${day.count} practice entry(s)`}
+                        className={`w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-[4px] border transition-transform hover:scale-125 cursor-pointer ${bgClass}`}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
